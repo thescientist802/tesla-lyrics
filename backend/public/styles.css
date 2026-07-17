@@ -1,0 +1,72 @@
+body {
+  font-family: -apple-system, "Segoe UI", sans-serif;
+  background: #0f0f0f;
+  color: #ffffff;
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.container {
+  width: 100%;
+  max-width: 500px;
+  text-align: center;
+}
+
+#search-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+#search-form input {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: #1a1a1a;
+  color: white;
+}
+
+#search-form button,
+#play-pause-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  background: #1db954;
+  color: black;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.hidden {
+  display: none;
+}
+
+#lyrics-container {
+  height: 400px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.lyric-line {
+  font-size: 1.1rem;
+  color: #666;
+  padding: 0.6rem 0;
+  transition: color 0.3s ease, transform 0.3s ease, font-size 0.3s ease;
+}
+
+.lyric-line.active {
+  color: #ffffff;
+  font-size: 1.4rem;
+  font-weight: 600;
+  transform: scale(1.05);
+}
