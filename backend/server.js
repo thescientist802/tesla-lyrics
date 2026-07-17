@@ -86,7 +86,7 @@ function parseSyncedLyrics(syncedLyrics) {
         const match = line.match(timeTagPattern);
         if(!match) continue;
 
-        const minutes = parseInt(matchp[1], 10);
+        const minutes = parseInt(match[1], 10);
         const seconds = parseInt(match[2], 10);
         const hundreths = parseInt(match[3], 10);
 

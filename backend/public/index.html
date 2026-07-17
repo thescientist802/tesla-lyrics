@@ -10,9 +10,9 @@
     <h1>Lyrics Sync Preview</h1>
 
     <form id="search-form">
-      <input type="text" id="artist-input" placeholder="Artist" required />
       <input type="text" id="track-input" placeholder="Track title" required />
-      <button type="submit">Fetch Lyrics</button>
+      <input type="text" id="artist-input" placeholder="Artist" required />
+      <button type="submit" id="submit-button">Fetch Lyrics</button>
     </form>
 
     <div id="controls" class="hidden">
@@ -20,6 +20,7 @@
       <span id="elapsed-time">0:00</span>
     </div>
 
+    <p id="status" role="status" aria-live="polite"></p>
     <div id="lyrics-container"></div>
   </div>
 

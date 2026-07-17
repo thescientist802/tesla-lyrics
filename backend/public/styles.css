@@ -39,6 +39,11 @@ body {
   cursor: pointer;
 }
 
+#search-form button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 #controls {
   display: flex;
   align-items: center;
@@ -49,6 +54,11 @@ body {
 
 .hidden {
   display: none;
+}
+
+#status {
+  min-height: 1.5rem;
+  color: #b8b8b8;
 }
 
 #lyrics-container {

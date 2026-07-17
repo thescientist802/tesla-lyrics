@@ -1,144 +1,108 @@
-const lyrics = [
-    { time: 27.68, text: "Come up to meet you, tell you I'm sorry" },
-    { time: 34.13, text: "You don't know how lovely you are" },
-    { time: 41.11, text: "I had to find you, tell you I need you" },
-    { time: 47.45, text: "Tell you I set you apart" },
-    { time: 54.12, text: "Tell me your secrets and ask me your questions" },
-    { time: 60.58, text: "Oh, let's go back to the start" },
-    { time: 66.97, text: "Running in circles, coming up tails" },
-    { time: 73.76, text: "Heads on a science apart" },
-    { time: 79.79, text: "Nobody said it was easy" },
-    { time: 86.53, text: "It's such a shame for us to part" },
-    { time: 92.88, text: "Nobody said it was easy" },
-    { time: 99.47, text: "No one ever said it would be this hard" },
-    { time: 108.35, text: "Oh, take me back to the start" }
-];
+let lyrics = [];
+let currentTime = 0;
+let isPlaying = false;
+let timerId;
 
+const form = document.getElementById("search-form");
+const artistInput = document.getElementById("artist-input");
+const trackInput = document.getElementById("track-input");
+const submitButton = document.getElementById("submit-button");
+const controls = document.getElementById("controls");
+const playPauseButton = document.getElementById("play-pause-btn");
+const elapsedTime = document.getElementById("elapsed-time");
+const lyricsContainer = document.getElementById("lyrics-container");
+const status = document.getElementById("status");
 
-let currentMs = 0;
-let currentSec = 0;
+form.addEventListener("submit", async (event) => {
+    event.preventDefault(); // A form submit otherwise reloads the page and cancels the request.
 
-let currentLyricIndex = 0;
+    const artist = artistInput.value.trim();
+    const track = trackInput.value.trim();
+    
+    if (!artist || !track) return;
 
+    await loadLyrics(artist, track);
+});
 
-const lyricElement = document.getElementById("current-lyric");
-const timerElement = document.getElementById("timer");
+playPauseButton.addEventListener("click", () => {
+    isPlaying = !isPlaying;
+    playPauseButton.textContent = isPlaying ? "Pause" : "Play";
+});
 
+async function loadLyrics(artist, track) {
+    submitButton.disabled = true;
+    status.textContent = "Fetching lyrics…";
+    lyricsContainer.replaceChildren();
+    controls.classList.add("hidden");
+    isPlaying = false;
+    currentTime = 0;
+    updatePlayback();
 
+    try {
+        const query = new URLSearchParams({ artist, track });
+        const response = await fetch(`/lyrics?${query}`);
+        const data = await response.json();
 
-setInterval(() => {
-
-    currentMs += 100;
-    currentSec = currentMs / 1000;
-
-    updateLyrics(currentSec);
-
-}, 100);
-
-
-
-setInterval(() => {
-
-    timerElement.textContent = currentSec.toFixed(1);
-
-}, 100);
-
-
-
-
-function updateLyrics(time) {
-
-    if (
-        currentLyricIndex < lyrics.length &&
-        lyrics[currentLyricIndex].time <= time
-    ) {
-
-
-        animateLyricChange(
-            lyrics[currentLyricIndex].text
-        );
-
-
-        currentLyricIndex++;
-
-    }
-
-}
-
-
-
-
-function animateLyricChange(newText) {
-
-
-    // Move current lyric up and fade out
-    gsap.to(lyricElement, {
-
-        y: -40,
-
-        opacity: 0,
-
-        duration: 0.4,
-
-        ease: "power2.in",
-
-        onComplete: () => {
-
-
-            // Change text after it disappears
-            lyricElement.textContent = newText;
-
-
-
-            // Bring new lyric from below
-            gsap.fromTo(
-                lyricElement,
-
-                {
-                    y: 40,
-                    opacity: 0
-                },
-
-                {
-                    y: 0,
-                    opacity: 1,
-                    duration: 0.6,
-                    ease: "power3.out"
-                }
-            );
-
+        if (!response.ok) {
+            throw new Error(data.error || "Couldn't fetch lyrics.");
         }
 
-    });
+        lyrics = data.lyrics;
+        if (!lyrics.length) {
+            throw new Error("No timed lyrics were found for this track.");
+        }
 
+        renderLyrics();
+        controls.classList.remove("hidden");
+        status.textContent = `Showing ${data.trackName} — ${data.artistName}`;
+    } catch (error) {
+        lyrics = [];
+        status.textContent = error.message;
+        console.error("Lyric request failed:", error);
+    } finally {
+        submitButton.disabled = false;
+    }
 }
 
-
-
-
-
-const reset = document.getElementById("reset-button");
-
-
-reset.addEventListener("click", () => {
-
-
-    currentMs = 0;
-
-    currentSec = 0;
-
-    currentLyricIndex = 0;
-
-
-    lyricElement.textContent = "...";
-
-    timerElement.textContent = "0.0";
-
-
-    // reset animation position
-    gsap.set(lyricElement, {
-        y:0,
-        opacity:1
+function renderLyrics() {
+    const lines = lyrics.map((lyric, index) => {
+        const line = document.createElement("p");
+        line.className = "lyric-line";
+        line.dataset.index = index;
+        line.textContent = lyric.text || "♪";
+        return line;
     });
+    lyricsContainer.replaceChildren(...lines);
+}
 
-});
+function updatePlayback() {
+    elapsedTime.textContent = formatTime(currentTime);
+    const activeIndex = lyrics.reduce(
+        (lastIndex, lyric, index) => lyric.time <= currentTime ? index : lastIndex,
+        -1
+    );
+
+    lyricsContainer.querySelectorAll(".lyric-line").forEach((line, index) => {
+        const active = index === activeIndex;
+        line.classList.toggle("active", active);
+        if (active) line.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+}
+
+function formatTime(time) {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60).toString().padStart(2, "0");
+    return `${minutes}:${seconds}`;
+}
+
+timerId = window.setInterval(() => {
+    if (!isPlaying || !lyrics.length) return;
+
+    currentTime += 0.1;
+    updatePlayback();
+
+    if (currentTime > lyrics.at(-1).time + 4) {
+        isPlaying = false;
+        playPauseButton.textContent = "Play";
+    }
+}, 100);
