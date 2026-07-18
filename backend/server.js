@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 3000
 app.get("/auth/login", (req, res) => {
 
     const scopes = [
+        "user-read-private",
         "user-read-playback-state",
         "user-read-currently-playing"
     ].join(" ")
@@ -19,7 +20,9 @@ app.get("/auth/login", (req, res) => {
             client_id: process.env.SPOTIFY_CLIENT_ID,
             response_type: "code",
             redirect_uri: process.env.SPOTIFY_REDIRECT_URI,
-            scope: scopes
+            scope: scopes,
+            // During development, always show the consent screen so scope changes are obvious.
+            show_dialog: "true",
         })
 
     res.redirect(`https://accounts.spotify.com/authorize?${spotifyAuthURL.toString()}`)
@@ -65,12 +68,130 @@ app.get("/auth/callback", async (req, res) => {
             expiresAt: Date.now() + expires_in * 1000, //this in memory storage is a placeholder, disappears if server restarts and only supports one user at a time
         }
 
-        res.send("Login success!")
+        res.redirect("/")
     } catch (err) {
         console.error("Token exchange failed:", err.response?.data || err.message);
         res.status(500).send("Something went wrong when exchanging code for a token.")
     }
 })
+
+async function getSpotifyAccessToken() {
+    const tokens = app.locals.spotifyTokens;
+
+    if (!tokens) {
+        const error = new Error("Not signed in to Spotify.");
+        error.status = 401;
+        throw error;
+    }
+
+    // Refresh one minute early so an API request is not made with an expired token.
+    if (Date.now() < tokens.expiresAt - 60_000) {
+        return tokens.accessToken;
+    }
+
+    const tokenResponse = await axios.post(
+        "https://accounts.spotify.com/api/token",
+        new URLSearchParams({
+            grant_type: "refresh_token",
+            refresh_token: tokens.refreshToken,
+        }),
+        {
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": "Basic " + Buffer.from(
+                    `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`
+                ).toString("base64"),
+            },
+        }
+    );
+
+    tokens.accessToken = tokenResponse.data.access_token;
+    tokens.expiresAt = Date.now() + tokenResponse.data.expires_in * 1000;
+    if (tokenResponse.data.refresh_token) {
+        tokens.refreshToken = tokenResponse.data.refresh_token;
+    }
+
+    return tokens.accessToken;
+}
+
+function sendSpotifyError(res, err) {
+    const status = err.response?.status || err.status || 500;
+    const message = err.response?.data?.error?.message || err.message || "Spotify request failed.";
+
+    if (status === 401) {
+        delete app.locals.spotifyTokens;
+    }
+
+    console.error("Spotify API request failed:", err.response?.data || err.message);
+    return res.status(status).json({ error: message });
+}
+
+app.get("/api/session", async (req, res) => {
+    try {
+        const accessToken = await getSpotifyAccessToken();
+        const profileResponse = await axios.get("https://api.spotify.com/v1/me", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const profile = profileResponse.data;
+
+        res.json({
+            signedIn: true,
+            profile: {
+                id: profile.id,
+                displayName: profile.display_name || profile.id,
+                imageUrl: profile.images?.[0]?.url || null,
+                spotifyUrl: profile.external_urls?.spotify || null,
+            },
+        });
+    } catch (err) {
+        sendSpotifyError(res, err);
+    }
+});
+
+app.get("/api/currently-playing", async (req, res) => {
+    try {
+        const accessToken = await getSpotifyAccessToken();
+        const playbackResponse = await axios.get("https://api.spotify.com/v1/me/player", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            validateStatus: (status) => status === 200 || status === 204,
+        });
+
+        if (playbackResponse.status === 204) {
+            return res.json({
+                isPlaying: false,
+                track: null,
+                message: "Spotify did not report an active playback device.",
+            });
+        }
+
+        const playback = playbackResponse.data;
+        const item = playback.item;
+
+        if (!item || item.type !== "track") {
+            return res.json({
+                isPlaying: false,
+                track: null,
+                message: "Spotify is not currently playing a music track.",
+            });
+        }
+
+        res.json({
+            isPlaying: playback.is_playing,
+            progressMs: playback.progress_ms,
+            track: {
+                id: item.id,
+                name: item.name,
+                artist: item.artists.map((artist) => artist.name).join(", "),
+                album: item.album.name,
+                durationMs: item.duration_ms,
+                imageUrl: item.album.images?.[0]?.url || null,
+                spotifyUrl: item.external_urls?.spotify || null,
+            },
+        });
+    } catch (err) {
+        sendSpotifyError(res, err);
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`Server running at http://127.0.0.1:${PORT}`);

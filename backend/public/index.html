@@ -7,21 +7,53 @@
 </head>
 <body>
   <div class="container">
-    <h1>Lyrics Sync Preview</h1>
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <p>SONGSPACE</p>
+      </div>
+      <h1>Lyrics, in motion.</h1>
+      <p class="intro">Find a song or connect Spotify to see the words unfold.</p>
 
-    <form id="search-form">
-      <input type="text" id="track-input" placeholder="Track title" required />
-      <input type="text" id="artist-input" placeholder="Artist" required />
-      <button type="submit" id="submit-button">Fetch Lyrics</button>
-    </form>
+      <a id="spotify-login-button" class="spotify-button" href="/auth/login">
+        <span class="button-dot"></span> Log in with Spotify
+      </a>
 
-    <div id="controls" class="hidden">
-      <button id="play-pause-btn">Play</button>
-      <span id="elapsed-time">0:00</span>
-    </div>
+      <section id="account-panel" class="account-panel hidden" aria-live="polite">
+        <img id="profile-image" class="profile-image hidden" alt="" />
+        <p id="profile-name"></p>
+      </section>
 
-    <p id="status" role="status" aria-live="polite"></p>
-    <div id="lyrics-container"></div>
+      <section id="now-playing" class="now-playing hidden" aria-live="polite">
+        <img id="album-image" class="album-image hidden" alt="" />
+        <div>
+          <p class="eyebrow">Now playing</p>
+          <a id="now-playing-track" target="_blank" rel="noreferrer"></a>
+          <p id="now-playing-artist"></p>
+          <p id="spotify-progress" class="spotify-progress"></p>
+        </div>
+      </section>
+
+      <p id="spotify-status" role="status" aria-live="polite"></p>
+
+      <form id="search-form">
+        <label>Track<input type="text" id="track-input" placeholder="Song title" required /></label>
+        <label>Artist<input type="text" id="artist-input" placeholder="Artist name" required /></label>
+        <button type="submit" id="submit-button">Fetch lyrics <span>↗</span></button>
+      </form>
+
+      <div id="controls" class="hidden">
+        <button id="play-pause-btn">Play</button>
+        <span id="elapsed-time">0:00</span>
+      </div>
+
+      <p id="status" role="status" aria-live="polite"></p>
+    </aside>
+
+    <main class="lyrics-panel">
+      <div class="lyrics-heading"><p>LIVE LYRICS</p><span class="live-indicator">●</span></div>
+      <div id="lyrics-container"></div>
+    </main>
   </div>
 
   <script src="index.js"></script>
